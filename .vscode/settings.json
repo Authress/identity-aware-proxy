@@ -1,0 +1,18 @@
+{
+    "cSpell.words": [
+        "Authress",
+        "agentkeepalive",
+        "Backoff",
+        "edgelambda",
+        "Fqdn",
+        "microsoftonline",
+        "nosniff",
+        "procore",
+        "userinfo",
+        "webauth",
+        "webauthn"
+    ],
+    "cSpell.ignoreRegExpList": [
+        "/\\w+([0-9]+\\w*)+/"
+    ],
+}
