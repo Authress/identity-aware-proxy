@@ -1,0 +1,21 @@
+name: build
+on:
+  push:
+    branches:
+    - main
+    - 'release/**'
+  pull_request:
+    branches:
+    - main
+    - 'release/**'
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Build
+      run: |
+        export VERSION=`echo $GITHUB_REF | sed -e "s/refs\/heads\///g" -e "s/release\///g"`
