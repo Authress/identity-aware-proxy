@@ -115,7 +115,6 @@ module.exports = {
               HttpVersion: 'http2and3',
               PriceClass: 'PriceClass_All',
               Origins: [{
-                OriginPath: '/v1',
                 DomainName: { 'Fn::Sub': '${s3BucketName}.s3.amazonaws.com' },
                 Id: 'S3',
                 S3OriginConfig: {
