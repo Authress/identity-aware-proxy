@@ -14,7 +14,7 @@
     "identityAwareProxyVersion": {
       "Type": "String",
       "Description": "The version of the proxy to deploy. Released version numbers are listed: https://github.com/Authress/identity-aware-proxy/tags",
-      "Default": "1.0.15"
+      "Default": "1.0.6"
     },
     "accessTokenIssuer": {
       "Type": "String",
