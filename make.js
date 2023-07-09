@@ -60,7 +60,12 @@ commander
   try {
     const awsArchitect = new AwsArchitect(packageMetadata, apiOptions);
     await awsArchitect.publishLambdaArtifactPromise();
-    console.log(`***** S3 Package Path: ${packageMetadata.name}/${version}/lambda.zip`);
+    console.log(`***** S3 Package Path: ${packageMetadata.name}/${packageMetadata.version}/lambda.zip`);
+
+    packageMetadata.version = version.replace(/\.\d+$/, '');
+    const awsArchitectReleaseVersion = new AwsArchitect(packageMetadata, apiOptions);
+    await awsArchitect.publishLambdaArtifactPromise();
+    console.log(`***** S3 Release Package Path: ${packageMetadata.name}/${packageMetadata.version}/lambda.zip`);
 
   } catch (failure) {
     console.log(JSON.stringify(failure, null, 2));
