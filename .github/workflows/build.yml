@@ -30,7 +30,7 @@ jobs:
       run: yarn --frozen-lockfile
 
     - name: Configure AWS Credentials
-      if: github.repository_owner == 'Authress' && github.ref == 'refs/heads/main'
+      if: github.repository_owner == 'Authress'
       uses: aws-actions/configure-aws-credentials@d713a182c5467df241c7509cf48b1c382c46080d
       with:
         aws-region: eu-west-1
@@ -39,7 +39,7 @@ jobs:
         role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubRunnerAssumedRole
         role-session-name: GitHubRunner-${{ github.repository_owner }}-IAP-${{ github.run_number }}
     - name: Deploy
-      if: github.repository_owner == 'Authress' && github.ref == 'refs/heads/main'
+      if: github.repository_owner == 'Authress' && github.ref != 'refs/heads/main'
       run: yarn publish-lambda-code-package
     - name: Create Github Release and Tag
       if: github.repository_owner == 'Authress' && github.ref != 'refs/heads/main'
