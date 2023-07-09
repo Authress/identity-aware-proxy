@@ -137,9 +137,7 @@
           "DefaultTTL": 0,
           "MaxTTL": 864000,
           "MinTTL": 0,
-          "Name": {
-            "Fn::Sub": "IAP-Vary-HostCaching"
-          },
+          "Name": { "Fn::Sub": "${identityAwareProxyCustomName}-HostVaryFrontCachingPolicy" },
           "ParametersInCacheKeyAndForwardedToOrigin": {
             "CookiesConfig": {
               "CookieBehavior": "none"
@@ -167,9 +165,7 @@
       "Type": "AWS::CloudFront::OriginRequestPolicy",
       "Properties": {
         "OriginRequestPolicyConfig": {
-          "Name": {
-            "Fn::Sub": "IAP-Login-UI"
-          },
+          "Name": { "Fn::Sub": "${identityAwareProxyCustomName}-Login-UI" },
           "Comment": "Login UI send additional headers, cookies, and query to origin",
           "CookiesConfig": {
             "CookieBehavior": "all"
@@ -295,7 +291,7 @@
           "DNSName": { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
           "HostedZoneId": "Z2FDTNDATAQYW2"
         },
-        "HostedZoneNameId": { "Ref": "proxyRoute53HostedZoneId" },
+        "HostedZoneId": { "Ref": "proxyRoute53HostedZoneId" },
         "Name": { "Fn::Sub": "${proxyCustomDomain}" },
         "Type": "A"
       }
