@@ -318,7 +318,7 @@
     "IdentityAwareProxyDomain": {
       "Description": "The domain generated for the Identity Aware Proxy.",
       "Value": {
-        "Fn::If": ["DeployCustomDomain", [{ "Fn::Sub": "${proxyCustomDomain}" }], { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] }]
+        "Fn::If": ["DeployCustomDomain", { "Fn::Sub": "${proxyCustomDomain}" }, { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] }]
       },
       "Export": {
         "Name": "IdentityAwareProxyDomain"
