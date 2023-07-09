@@ -32,3 +32,6 @@ jobs:
 
     - name: Install packages
       run: yarn --frozen-lockfile
+
+    - name: Build
+      run: yarn lint

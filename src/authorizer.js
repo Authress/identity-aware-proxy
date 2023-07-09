@@ -28,7 +28,7 @@ class Authorizer {
       // If they are logged in, then let them have the data, `null` is a passthrough
       return null;
     } catch (error) {
-      logger.log({ title: 'User not authorized falling back to re-authentication', level: 'INFO',error });
+      logger.log({ title: 'User not authorized falling back to re-authentication', level: 'INFO', error });
     }
 
     // In case the user isn't logged in, redirect them to the authentication endpoint
@@ -36,7 +36,7 @@ class Authorizer {
 
     const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
     
-    const codeVerifier = base64url.encode(crypto.randomBytes(64));;
+    const codeVerifier = base64url.encode(crypto.randomBytes(64));
     const codeChallenge = base64url.encode(crypto.createHash('sha256').update(codeVerifier).digest());
     const redirectUrl = `https://${request.headers.host}${request.path || '/'}`;
 
@@ -68,7 +68,7 @@ class Authorizer {
     }
   }
 
-  async getPublicKey(jwkKeyListUrl, kid, token) {
+  async getPublicKey(jwkKeyListUrl, kid) {
     if (!this.publicKeysPromises[jwkKeyListUrl]) {
       this.publicKeysPromises[jwkKeyListUrl] = axios.get(jwkKeyListUrl);
     }

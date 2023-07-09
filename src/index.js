@@ -2,7 +2,6 @@
 
 require('error-object-polyfill');
 const Api = require('openapi-factory');
-const { cloneDeepWith } = require('lodash');
 
 process.env.AWS_NODEJS_CONNECTION_REUSE_ENABLED = 1;
 require('http').globalAgent.keepAlive = true;
@@ -50,7 +49,6 @@ try {
 
   const apiTrigger = require('./apiTrigger');
   api.onEvent(async (trigger, context) => {
-    permissionsManager.authorizer = null;
     logger.startInvocation({ version: context.functionVersion });
     try {
       const result = await apiTrigger.onEvent(trigger, context, (...args) => api.handler(...args));
@@ -64,10 +62,9 @@ try {
 
   api.head('/{proxy+}', request => authorizer.authorizeRequest(request));
   api.get('/{proxy+}', request => authorizer.authorizeRequest(request));
-  api.options('/{proxy+}', request => {
+  api.options('/{proxy+}', () => {
     return null;
-  })
-
+  });
 } catch (error) {
   logger.log({ title: 'LoaderLogger - failed to load service', level: 'ERROR', error });
   throw error;

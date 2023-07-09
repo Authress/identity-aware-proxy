@@ -1,5 +1,4 @@
 require('error-object-polyfill');
-const fs = require('fs-extra');
 const path = require('path');
 const { config } = require('aws-sdk');
 const AwsArchitect = require('aws-architect');
@@ -33,7 +32,7 @@ const packageMetadata = require('./package.json');
 packageMetadata.version = version;
 
 const apiOptions = {
-  deploymentBucket: `authress-identity-aware-proxy-public-artifacts`,
+  deploymentBucket: 'authress-identity-aware-proxy-public-artifacts',
   sourceDirectory: path.join(__dirname, 'src'),
   description: packageMetadata.description,
   regions: [REGION]
@@ -64,9 +63,8 @@ commander
 
     packageMetadata.version = version.replace(/\.\d+$/, '');
     const awsArchitectReleaseVersion = new AwsArchitect(packageMetadata, apiOptions);
-    await awsArchitect.publishLambdaArtifactPromise();
+    await awsArchitectReleaseVersion.publishLambdaArtifactPromise();
     console.log(`***** S3 Release Package Path: ${packageMetadata.name}/${packageMetadata.version}/lambda.zip`);
-
   } catch (failure) {
     console.log(JSON.stringify(failure, null, 2));
     process.exit(1);

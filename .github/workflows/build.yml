@@ -29,6 +29,9 @@ jobs:
     - name: Install packages
       run: yarn --frozen-lockfile
 
+    - name: Build
+      run: yarn lint
+
     - name: Configure AWS Credentials
       if: github.repository_owner == 'Authress'
       uses: aws-actions/configure-aws-credentials@d713a182c5467df241c7509cf48b1c382c46080d

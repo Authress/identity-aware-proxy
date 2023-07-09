@@ -11,7 +11,7 @@
     "start": "nodemon make.js run",
     "build": "node make.js",
     "publish-lambda-code-package": "node make.js publish-lambda-code-package",
-    "lint": "eslint --ext .js src tests make.js",
+    "lint": "eslint --ext .js src make.js",
     "test": "mocha tests/*.test.js tests/**/*.test.js --require tests/.setup.js"
   },
   "config": {},
@@ -42,6 +42,7 @@
     "eslint-plugin-import": "^2.22.1",
     "eslint-plugin-mocha": "^8.0.0",
     "eslint-plugin-node": "^11.1.0",
+    "eslint-plugin-promise": "^6.1.1",
     "fs-extra": "^11.1.1",
     "glob": "^7.1.6",
     "mocha": "^8.2.1",
