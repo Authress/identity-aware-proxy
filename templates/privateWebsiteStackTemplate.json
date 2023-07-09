@@ -1,15 +1,16 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
   "Description": "Identity Aware Proxy",
+  "Transform": "AWS::Serverless-2016-10-31",
   "Parameters": {
-    "serviceName": {
-      "Type": "String",
-      "Description": "The name of the proxy microservice, is used in the naming of various created resources.",
-      "Default": "IdentityAwareProxy"
-    },
-    "s3BucketName": {
+    "bucketWebsiteS3Name": {
       "Type": "String",
       "Description": "Your S3 Bucket that contains your private static website. This is necessary to configure the CloudFront to proxy your S3 bucket."
+    },
+    "identityAwareProxyCustomName": {
+      "Type": "String",
+      "Description": "Provide a custom name of the proxy microservice, is used in the naming of various created resources.",
+      "Default": "IdentityAwareProxy"
     },
     "identityAwareProxyVersion": {
       "Type": "String",
@@ -25,58 +26,47 @@
       "Type": "String",
       "Description": "The application identifier used to securely log users in via the hosted login page. Use the default application or create on at: https://authress.io/app/#/settings?focus=applications",
       "Default": "app_default"
+    },
+    "proxyCustomDomain": {
+      "Type": "String",
+      "Description": "[Optional] Specify a domain to host the proxy on. This is where your users will connect to, and will forward the requests to your bucket.",
+      "Default": ""
+    },
+    "proxyRoute53HostedZoneId": {
+      "Type": "String",
+      "Description": "[Optional] Specify the Route53 hosted zone that will be used to connect your custom domain to the CloudFront. This will also be used to request a Certificate for that domain.",
+      "Default": ""
     }
   },
+  "Conditions": {
+    "DeployCustomDomain": { "Fn::Not": [{ "Fn::Equals": [{ "Ref": "proxyCustomDomain" }, ""] }] }
+  },
+
   "Resources": {
-    "LambdaFunction": {
-      "Type": "AWS::Lambda::Function",
+    "LambdaFunctionAutoVersion": {
+      "Type": "AWS::Serverless::Function",
       "Properties": {
-        "FunctionName": { "Ref": "serviceName" },
+        "FunctionName": { "Ref": "identityAwareProxyCustomName" },
         "Description": "Identity Aware Proxy",
         "Handler": "index.handler",
         "Runtime": "nodejs18.x",
-        "Code": {
-          "S3Bucket": "authress-identity-aware-proxy-public-artifacts",
-          "S3Key": { "Fn::Sub": "IdentityAwareProxy/${identityAwareProxyVersion}/lambda.zip" }
+
+        "AutoPublishAlias": "production",
+        "AutoPublishAliasAllProperties": true,
+        "CodeUri": {
+          "Bucket": "authress-identity-aware-proxy-public-artifacts",
+          "Key": { "Fn::Sub": "IdentityAwareProxy/${identityAwareProxyVersion}/lambda.zip" }
         },
         "MemorySize": 1769,
         "Timeout": 30,
         "Role": { "Fn::GetAtt": ["LambdaRole", "Arn"] }
       }
     },
-    "LambdaFunctionVersion": {
-      "Type": "AWS::Lambda::Version",
-      "Properties": {
-        "FunctionName": {
-          "Ref": "LambdaFunction"
-        },
-        "Description": "Initial Production Deployed Version"
-      }
-    },
-    "ProductionAlias": {
-      "Type": "AWS::Lambda::Alias",
-      "Properties": {
-        "Description": "The production alias",
-        "FunctionName": {
-          "Fn::GetAtt": [
-            "LambdaFunction",
-            "Arn"
-          ]
-        },
-        "FunctionVersion": {
-          "Fn::GetAtt": [
-            "LambdaFunctionVersion",
-            "Version"
-          ]
-        },
-        "Name": "production"
-      }
-    },
     "LambdaRole": {
       "Type": "AWS::IAM::Role",
       "Properties": {
         "RoleName": {
-          "Fn::Sub": "${serviceName}LambdaRole-${AWS::Region}"
+          "Fn::Sub": "${identityAwareProxyCustomName}LambdaRole-${AWS::Region}"
         },
         "AssumeRolePolicyDocument": {
           "Version": "2012-10-17",
@@ -114,7 +104,7 @@
       "Type": "AWS::S3::BucketPolicy",
       "Properties": {
         "Bucket": {
-          "Ref": "s3BucketName"
+          "Ref": "bucketWebsiteS3Name"
         },
         "PolicyDocument": {
           "Version": "2012-10-17",
@@ -132,7 +122,7 @@
               },
               "Action": "s3:GetObject",
               "Resource": {
-                "Fn::Sub": "arn:aws:s3:::${s3BucketName}/*"
+                "Fn::Sub": "arn:aws:s3:::${bucketWebsiteS3Name}/*"
               }
             }
           ]
@@ -193,6 +183,19 @@
         }
       }
     },
+    "TLSCertificate": {
+      "Type": "AWS::CertificateManager::Certificate",
+      "Condition": "DeployCustomDomain",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "DomainName": { "Fn::Sub": "${proxyCustomDomain}" },
+        "ValidationMethod": "DNS",
+        "DomainValidationOptions": [{
+          "DomainName": { "Fn::Sub": "${proxyCustomDomain}" },
+          "HostedZoneId": { "Ref": "proxyRoute53HostedZoneId" }
+        }]
+      }
+    },
     "CloudFrontDistribution": {
       "Type": "AWS::CloudFront::Distribution",
       "Properties": {
@@ -202,10 +205,11 @@
           "DefaultRootObject": "index.html",
           "HttpVersion": "http2and3",
           "PriceClass": "PriceClass_All",
+          "Aliases": { "Fn::If": ["DeployCustomDomain", [{ "Fn::Sub": "${proxyCustomDomain}" }], { "Ref": "AWS::NoValue" }] },
           "Origins": [
             {
               "DomainName": {
-                "Fn::Sub": "${s3BucketName}.s3.amazonaws.com"
+                "Fn::Sub": "${bucketWebsiteS3Name}.s3.amazonaws.com"
               },
               "Id": "S3",
               "OriginCustomHeaders": [
@@ -245,7 +249,7 @@
                   "EventType": "origin-request",
                   "IncludeBody": true,
                   "LambdaFunctionARN": {
-                    "Ref": "LambdaFunctionVersion"
+                    "Fn::Sub": "${LambdaFunctionAutoVersion.Version}"
                   }
                 }
               ]
@@ -267,12 +271,46 @@
                 "EventType": "origin-request",
                 "IncludeBody": true,
                 "LambdaFunctionARN": {
-                  "Ref": "LambdaFunctionVersion"
+                  "Fn::Sub": "${LambdaFunctionAutoVersion.Version}"
                 }
               }
             ]
+          },
+          "ViewerCertificate": { "Fn::If": ["DeployCustomDomain",
+          {
+            "AcmCertificateArn": { "Ref": "TLSCertificate"},
+            "MinimumProtocolVersion": "TLSv1.2_2021",
+            "SslSupportMethod": "sni-only"
+          }, { "Ref": "AWS::NoValue" }]
           }
         }
+      }
+    },
+
+    "ProdRoute53": {
+      "Type": "AWS::Route53::RecordSet",
+      "Condition": "DeployCustomDomain",
+      "Properties": {
+        "AliasTarget": {
+          "DNSName": { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
+          "HostedZoneId": "Z2FDTNDATAQYW2"
+        },
+        "HostedZoneNameId": { "Ref": "proxyRoute53HostedZoneId" },
+        "Name": { "Fn::Sub": "${proxyCustomDomain}" },
+        "Type": "A"
+      }
+    },
+    "ProdRoute53Ipv6": {
+      "Type": "AWS::Route53::RecordSet",
+      "Condition": "DeployCustomDomain",
+      "Properties": {
+        "AliasTarget": {
+          "DNSName": { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] },
+          "HostedZoneId": "Z2FDTNDATAQYW2"
+        },
+        "HostedZoneId": { "Ref": "proxyRoute53HostedZoneId" },
+        "Name": { "Fn::Sub": "${proxyCustomDomain}" },
+        "Type": "AAAA"
       }
     }
   },
@@ -280,10 +318,7 @@
     "IdentityAwareProxyDomain": {
       "Description": "The domain generated for the Identity Aware Proxy.",
       "Value": {
-        "Fn::GetAtt": [
-          "CloudFrontDistribution",
-          "DomainName"
-        ]
+        "Fn::If": ["DeployCustomDomain", [{ "Fn::Sub": "${proxyCustomDomain}" }], { "Fn::GetAtt": ["CloudFrontDistribution", "DomainName"] }]
       },
       "Export": {
         "Name": "IdentityAwareProxyDomain"
