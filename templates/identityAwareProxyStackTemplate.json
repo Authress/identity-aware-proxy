@@ -1,6 +1,6 @@
 {
   "AWSTemplateFormatVersion": "2010-09-09",
-  "Description": "Identity Aware Proxy + S3 Private Website",
+  "Description": "Identity Aware Proxy",
   "Transform": "AWS::Serverless-2016-10-31",
   "Parameters": {
     "bucketWebsiteS3Name": {
