@@ -4,46 +4,40 @@
   "Parameters": {
     "serviceName": {
       "Type": "String",
-      "Description": "The name of the microservice",
+      "Description": "The name of the proxy microservice, is used in the naming of various created resources.",
       "Default": "IdentityAwareProxy"
-    },
-    "serviceDescription": {
-      "Type": "String",
-      "Description": "Description for service resources",
-      "Default": "Identity Aware Proxy"
     },
     "s3BucketName": {
       "Type": "String",
-      "Description": "Your S3 Bucket that contains your private static website.",
-      "Default": "authress-identity-aware-proxy-artifacts"
+      "Description": "Your S3 Bucket that contains your private static website. This is necessary to configure the CloudFront to proxy your S3 bucket."
     },
     "identityAwareProxyVersion": {
       "Type": "String",
-      "Description": "The version of the proxy to deploy",
+      "Description": "The version of the proxy to deploy. Released version numbers are listed: https://github.com/Authress/identity-aware-proxy/tags",
       "Default": "1.0.15"
     },
     "accessTokenIssuer": {
       "Type": "String",
       "Description": "The authentication token issuer url used to verify incoming tokens. Get one by creating an account at https://authress.io",
-      "Default": "https://login.authress.io"
-      
+      "Default": "login.authress.io"
+    },
+    "applicationIdentifier": {
+      "Type": "String",
+      "Description": "The application identifier used to securely log users in via the hosted login page. Use the default application or create on at: https://authress.io/app/#/settings?focus=applications",
+      "Default": "app_default"
     }
   },
   "Resources": {
     "LambdaFunction": {
       "Type": "AWS::Lambda::Function",
       "Properties": {
-        "FunctionName": {
-          "Ref": "serviceName"
-        },
-        "Description": {
-          "Ref": "serviceDescription"
-        },
+        "FunctionName": { "Ref": "serviceName" },
+        "Description": "Identity Aware Proxy",
         "Handler": "index.handler",
         "Runtime": "nodejs18.x",
         "Code": {
-          "S3Bucket": { "Ref": "s3BucketName" },
-          "S3Key": { "Ref": "identityAwareProxyVersion" }
+          "S3Bucket": "authress-identity-aware-proxy-public-artifacts",
+          "S3Key": { "Fn::Sub": "IdentityAwareProxy/${identityAwareProxyVersion}/lambda.zip" }
         },
         "MemorySize": 1769,
         "Timeout": 30,
@@ -214,7 +208,10 @@
                 "Fn::Sub": "${s3BucketName}.s3.amazonaws.com"
               },
               "Id": "S3",
-              "OriginCustomHeaders": [{ "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" }}],
+              "OriginCustomHeaders": [
+                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" }},
+                { "HeaderName": "X-AUTHRESS-APPLICATION-ID", "HeaderValue": { "Ref": "applicationIdentifier" }}
+              ],
               "S3OriginConfig": {
                 "OriginAccessIdentity": {
                   "Fn::Sub": "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
@@ -241,7 +238,7 @@
                 "Ref": "LoginUIHostVaryFrontOriginRequestPolicy"
               },
               "PathPattern": "login/*",
-              "TargetOriginId": "Login-API",
+              "TargetOriginId": "S3",
               "ViewerProtocolPolicy": "redirect-to-https",
               "LambdaFunctionAssociations": [
                 {
@@ -261,10 +258,19 @@
               "OPTIONS"
             ],
             "Compress": true,
-            "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+            "CachePolicyId": "2e54312d-136d-493c-8eb9-b001f22f67d2",
             "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
             "TargetOriginId": "S3",
-            "ViewerProtocolPolicy": "redirect-to-https"
+            "ViewerProtocolPolicy": "redirect-to-https",
+            "LambdaFunctionAssociations": [
+              {
+                "EventType": "origin-request",
+                "IncludeBody": true,
+                "LambdaFunctionARN": {
+                  "Ref": "LambdaFunctionVersion"
+                }
+              }
+            ]
           }
         }
       }

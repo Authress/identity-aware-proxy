@@ -5,7 +5,7 @@ const { config } = require('aws-sdk');
 const AwsArchitect = require('aws-architect');
 const commander = require('commander');
 
-const REGION = 'eu-west-1';
+const REGION = 'us-east-1';
 config.region = REGION;
 
 function getVersion() {
@@ -33,7 +33,7 @@ const packageMetadata = require('./package.json');
 packageMetadata.version = version;
 
 const apiOptions = {
-  deploymentBucket: `authress-identity-aware-proxy-artifacts`,
+  deploymentBucket: `authress-identity-aware-proxy-public-artifacts`,
   sourceDirectory: path.join(__dirname, 'src'),
   description: packageMetadata.description,
   regions: [REGION]

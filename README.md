@@ -26,11 +26,15 @@ There are specifically two different configurations that enable:
 
 * [IAP Proxy Stack Template](./templates/identityAwareProxyStackTemplate.json)
 
+(Note: Stacks must be deployed in the AWS US-EAST-1 Region)
+
 The IAP enables adding globally redundant and fault tolerant authentication to an existing service being run. After deploying the stack, your service will automatically receive user identity tokens that can be verified. These tokens are automatically verified by the proxy to ensure all requests to the services themselves are secured.
 
 ## Private Website
 
 * [S3 Private Website Stack Template](./templates/privateWebsiteStackTemplate.json)
+
+(Note: Stacks must be deployed in the AWS US-EAST-1 Region)
 
 Parameters:
 

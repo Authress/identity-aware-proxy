@@ -9,6 +9,7 @@ require('http').globalAgent.keepAlive = true;
 require('https').globalAgent.keepAlive = true;
 
 const logger = require('./logger');
+const authorizer = require('./authorizer');
 
 try {
   // const aws = require('aws-sdk');
@@ -47,11 +48,6 @@ try {
   }, () => {});
   module.exports = api;
 
-  api.setAuthorizer(request => {
-    const authorizer = require('./authorizer');
-    return authorizer.getPolicy(request);
-  });
-
   const apiTrigger = require('./apiTrigger');
   api.onEvent(async (trigger, context) => {
     permissionsManager.authorizer = null;
@@ -66,7 +62,12 @@ try {
     }
   });
 
-  api.get('/', request => ({}));
+  api.head('/{proxy+}', request => authorizer.authorizeRequest(request));
+  api.get('/{proxy+}', request => authorizer.authorizeRequest(request));
+  api.options('/{proxy+}', request => {
+    return null;
+  })
+
 } catch (error) {
   logger.log({ title: 'LoaderLogger - failed to load service', level: 'ERROR', error });
   throw error;

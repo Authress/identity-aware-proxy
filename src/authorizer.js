@@ -1,4 +1,8 @@
 const axios = require('axios');
+const cookieManager = require('cookie');
+const crypto = require('crypto');
+const base64url = require('base64url');
+
 const jwtManager = require('./jwtManager');
 const { jwtVerify, importJWK } = require('jose');
 
@@ -7,6 +11,61 @@ const logger = require('./logger');
 class Authorizer {
   constructor() {
     this.publicKeysPromises = {};
+  }
+
+  async authorizeRequest(request) {
+    const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['X-ISSUER'];
+    const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['X-AUTHRESS-APPLICATION-ID'];
+
+    const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
+
+    const authorizationToken = cookieManager.parse(request.headers?.cookie || '').authorization;
+
+    try {
+      const identityResult = await this.getPolicy(expectedIssuer, authorizationToken);
+      logger.log({ title: 'User Valid Identity', level: 'INFO', identityResult });
+
+      // If they are logged in, then let them have the data, `null` is a passthrough
+      return null;
+    } catch (error) {
+      logger.log({ title: 'User not authorized falling back to re-authentication', level: 'INFO',error });
+    }
+
+    // In case the user isn't logged in, redirect them to the authentication endpoint
+    // User is unauthorized
+
+    const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
+    
+    const codeVerifier = base64url.encode(crypto.randomBytes(64));;
+    const codeChallenge = base64url.encode(crypto.createHash('sha256').update(codeVerifier).digest());
+    const redirectUrl = `https://${request.headers.host}${request.path || '/'}`;
+
+    try {
+      const loginResult = await loginClient.post('/authentication', {
+        redirectUrl,
+        codeChallengeMethod: 'S256',
+        codeChallenge,
+        applicationId: applicationIdentifier,
+        responseLocation: 'cookie'
+      });
+
+      return {
+        statusCode: 301,
+        headers: {
+          location: loginResult.data.authenticationUrl
+        },
+        body: {}
+      };
+    } catch (error) {
+      logger.log({ title: 'Failed to get login url', level: 'ERROR', error });
+
+      return {
+        statusCode: 500,
+        body: {
+          title: 'Failed to redirect to the authentication url. Please try again'
+        }
+      };
+    }
   }
 
   async getPublicKey(jwkKeyListUrl, kid, token) {
@@ -31,51 +90,40 @@ class Authorizer {
     }
   }
 
-  async getPolicy(request) {
-    const expectedIssuer = request.requestContext.cloudFrontOriginConfig
-      && request.requestContext.cloudFrontOriginConfig.customHeaders && request.requestContext.cloudFrontOriginConfig.customHeaders['X-ISSUER'];
-
-    const authorizationHeaderName = Object.keys(request.headers).find(key => {
-      return key.match(/^Authorization$/i);
-    });
-
-    let token = request.headers[authorizationHeaderName] ? request.headers[authorizationHeaderName].split(' ')[1] : null;
-    if (!token) {
+  async getPolicy(expectedIssuer, authorizationToken) {
+    if (!authorizationToken) {
       logger.log({ title: 'Unauthorized', level: 'WARN', details: 'no token specified' });
       throw Error.create('Unauthorized');
     }
 
-    let unverifiedToken = jwtManager.decodeFull(token);
+    let unverifiedToken = jwtManager.decodeFull(authorizationToken);
     let kid = unverifiedToken && unverifiedToken.header && unverifiedToken.header.kid;
     if (!kid) {
-      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Kid not in token', token: unverifiedToken || token || '<NO TOKEN>' });
+      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Kid not in token', token: unverifiedToken || authorizationToken || '<NO TOKEN>' });
       throw Error.create('Unauthorized');
     }
 
-    let issuer = unverifiedToken && unverifiedToken.payload && unverifiedToken.payload.iss;
-    if (!issuer) {
-      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Issuer not in token', token: unverifiedToken || token || '<NO TOKEN>' });
+    let rawIssuer = unverifiedToken && unverifiedToken.payload && unverifiedToken.payload.iss;
+    if (!rawIssuer) {
+      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Issuer not in token', token: unverifiedToken || authorizationToken || '<NO TOKEN>' });
       throw Error.create('Unauthorized');
     }
 
-    if (issuer !== process.env.ISSUER) {
-      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Issuer mismatch', token: unverifiedToken || token || '<NO TOKEN>' });
+    const issuer = rawIssuer.startsWith('http') ? rawIssuer : `https://${rawIssuer}`;
+
+    if (issuer.replace(/[/]$/, '') !== expectedIssuer.replace(/[/]$/, '')) {
+      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Issuer mismatch', token: unverifiedToken || authorizationToken || '<NO TOKEN>' });
       throw Error.create('Unauthorized');
     }
 
-    if (!issuerData) {
-      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Issuer not in token', token: unverifiedToken || token || '<NO TOKEN>' });
-      throw Error.create('Unauthorized');
-    }
-
-    let key = await this.getPublicKey(`${issuer}/.well-known/openid-configuration/jwks`, kid, token);
+    const key = await this.getPublicKey(`${rawIssuer}/.well-known/openid-configuration/jwks`, kid, authorizationToken);
 
     let identity;
     try {
-      const verifiedToken = await jwtVerify(token, await importJWK(key), { algorithms: ['EdDSA'], issuer, audience: issuerData.audience });
+      const verifiedToken = await jwtVerify(authorizationToken, await importJWK(key), { algorithms: ['EdDSA'], issuer: rawIssuer });
       identity = verifiedToken.payload;
     } catch (exception) {
-      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Invalid Token', error: exception, token: token || '<NO TOKEN>' });
+      logger.log({ title: 'Unauthorized', level: 'INFO', details: 'Invalid Token', error: exception, token: authorizationToken || '<NO TOKEN>' });
       throw Error.create('Unauthorized');
     }
 

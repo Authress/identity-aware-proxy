@@ -3,6 +3,7 @@ const { cloneDeep } = require('lodash');
 
 const logger = require('./logger');
 const requestSanitizer = require('./requestSanitizer');
+const domainMatcher = require('./domainMatcher');
 
 class ApiTrigger {
   async onEvent(trigger, context, apiHandler) {
@@ -57,37 +58,14 @@ class ApiTrigger {
     // Add support for requests that don't contain an origin and usages of `same-site` sec requests
     constructedRequest.headers.origin = domainMatcher.getOrigin(constructedRequest);
 
-    if (constructedRequest.httpMethod !== 'OPTIONS') {
-      try {
-        const { principalId, context: authorizerContext } = await apiHandler(Object.assign({ type: 'REQUEST' }, cloneDeep(constructedRequest)));
-        constructedRequest.requestContext.authorizer = { principalId, ...authorizerContext };
-      } catch (error) {
-        if (error.message.statusCode) {
-          return {
-            status: error.message.statusCode || 401,
-            headers: { 'access-control-allow-origin': [{ value: '*' }] },
-            body: Buffer.from(JSON.stringify(error.message.body || {})).toString('base64'),
-            bodyEncoding: 'base64'
-          };
-        }
-        logger.log({ title: 'Failed to handle authorize cloud front request', level: 'ERROR', constructedRequest, context, error });
-        return {
-          status: 500,
-          headers: { 'access-control-allow-origin': [{ value: '*' }] },
-          body: Buffer.from(JSON.stringify({ title: 'Unexpected error in authorization' })).toString('base64'),
-          bodyEncoding: 'base64'
-        };
-      }
-    }
-
-    if (constructedRequest.pathParameters.accountId && constructedRequest.pathParameters.accountId !== constructedRequest.requestContext.authorizer.accountId) {
-      logger.log({ title: 'Cross account request for a resource, The token accountId does not match the one in the account, that means the userId could have been tampered with. If this has not been reported convert it to a hard error. At some point in the future we may allow this, in which case the caller needs to identify their account to the target.',
-        level: 'TRACK', constructedRequest });
-    }
-
     try {
       logger.trackPoint('apiTrigger.onEvent.beforeApiHandler');
       const response = await apiHandler(constructedRequest, context);
+
+      if (!response) {
+        return request;
+      }
+
       logger.trackPoint('apiTrigger.onEvent.afterApiHandler');
       const responseHeaders = requestSanitizer.convertResponseHeaders(response);
 
