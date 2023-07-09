@@ -1,0 +1,287 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Identity Aware Proxy",
+  "Parameters": {
+    "serviceName": {
+      "Type": "String",
+      "Description": "The name of the microservice",
+      "Default": "IdentityAwareProxy"
+    },
+    "serviceDescription": {
+      "Type": "String",
+      "Description": "Description for service resources",
+      "Default": "Identity Aware Proxy"
+    },
+    "s3BucketName": {
+      "Type": "String",
+      "Description": "Your S3 Bucket that contains your private static website.",
+      "Default": "authress-identity-aware-proxy-artifacts"
+    },
+    "identityAwareProxyVersion": {
+      "Type": "String",
+      "Description": "The version of the proxy to deploy",
+      "Default": "1.0.15"
+    },
+    "accessTokenIssuer": {
+      "Type": "String",
+      "Description": "The authentication token issuer url used to verify incoming tokens. Get one by creating an account at https://authress.io",
+      "Default": "https://login.authress.io"
+      
+    }
+  },
+  "Resources": {
+    "LambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "serviceName"
+        },
+        "Description": {
+          "Ref": "serviceDescription"
+        },
+        "Handler": "index.handler",
+        "Runtime": "nodejs18.x",
+        "Code": {
+          "S3Bucket": { "Ref": "s3BucketName" },
+          "S3Key": { "Ref": "identityAwareProxyVersion" }
+        },
+        "MemorySize": 1769,
+        "Timeout": 30,
+        "Role": { "Fn::GetAtt": ["LambdaRole", "Arn"] }
+      }
+    },
+    "LambdaFunctionVersion": {
+      "Type": "AWS::Lambda::Version",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LambdaFunction"
+        },
+        "Description": "Initial Production Deployed Version"
+      }
+    },
+    "ProductionAlias": {
+      "Type": "AWS::Lambda::Alias",
+      "Properties": {
+        "Description": "The production alias",
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "LambdaFunction",
+            "Arn"
+          ]
+        },
+        "FunctionVersion": {
+          "Fn::GetAtt": [
+            "LambdaFunctionVersion",
+            "Version"
+          ]
+        },
+        "Name": "production"
+      }
+    },
+    "LambdaRole": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "RoleName": {
+          "Fn::Sub": "${serviceName}LambdaRole-${AWS::Region}"
+        },
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com",
+                  "edgelambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "ManagedPolicyArns": [
+          "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole",
+          "arn:aws:iam::aws:policy/AWSXrayWriteOnlyAccess"
+        ],
+        "Path": "/"
+      }
+    },
+    "CloudFrontOriginAccessIdentity": {
+      "Type": "AWS::CloudFront::CloudFrontOriginAccessIdentity",
+      "Properties": {
+        "CloudFrontOriginAccessIdentityConfig": {
+          "Comment": "Identity Aware Proxy"
+        }
+      }
+    },
+    "S3BucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "s3BucketName"
+        },
+        "PolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Sid": "Grant a CloudFront Origin Identity access to support private content",
+              "Effect": "Allow",
+              "Principal": {
+                "CanonicalUser": {
+                  "Fn::GetAtt": [
+                    "CloudFrontOriginAccessIdentity",
+                    "S3CanonicalUserId"
+                  ]
+                }
+              },
+              "Action": "s3:GetObject",
+              "Resource": {
+                "Fn::Sub": "arn:aws:s3:::${s3BucketName}/*"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "HostVaryFrontCachingPolicy": {
+      "Type": "AWS::CloudFront::CachePolicy",
+      "Properties": {
+        "CachePolicyConfig": {
+          "Comment": "Authentication Login Vary response on Host",
+          "DefaultTTL": 0,
+          "MaxTTL": 864000,
+          "MinTTL": 0,
+          "Name": {
+            "Fn::Sub": "IAP-Vary-HostCaching"
+          },
+          "ParametersInCacheKeyAndForwardedToOrigin": {
+            "CookiesConfig": {
+              "CookieBehavior": "none"
+            },
+            "EnableAcceptEncodingBrotli": true,
+            "EnableAcceptEncodingGzip": true,
+            "HeadersConfig": {
+              "HeaderBehavior": "whitelist",
+              "Headers": [
+                "Host",
+                "Origin",
+                "Sec-Fetch-Dest",
+                "Sec-Fetch-Mode",
+                "Sec-Fetch-Site"
+              ]
+            },
+            "QueryStringsConfig": {
+              "QueryStringBehavior": "none"
+            }
+          }
+        }
+      }
+    },
+    "LoginUIHostVaryFrontOriginRequestPolicy": {
+      "Type": "AWS::CloudFront::OriginRequestPolicy",
+      "Properties": {
+        "OriginRequestPolicyConfig": {
+          "Name": {
+            "Fn::Sub": "IAP-Login-UI"
+          },
+          "Comment": "Login UI send additional headers, cookies, and query to origin",
+          "CookiesConfig": {
+            "CookieBehavior": "all"
+          },
+          "HeadersConfig": {
+            "HeaderBehavior": "allViewer"
+          },
+          "QueryStringsConfig": {
+            "QueryStringBehavior": "all"
+          }
+        }
+      }
+    },
+    "CloudFrontDistribution": {
+      "Type": "AWS::CloudFront::Distribution",
+      "Properties": {
+        "DistributionConfig": {
+          "Comment": "Identity Aware Proxy",
+          "Enabled": true,
+          "DefaultRootObject": "index.html",
+          "HttpVersion": "http2and3",
+          "PriceClass": "PriceClass_All",
+          "Origins": [
+            {
+              "DomainName": {
+                "Fn::Sub": "${s3BucketName}.s3.amazonaws.com"
+              },
+              "Id": "S3",
+              "OriginCustomHeaders": [{ "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" }}],
+              "S3OriginConfig": {
+                "OriginAccessIdentity": {
+                  "Fn::Sub": "origin-access-identity/cloudfront/${CloudFrontOriginAccessIdentity}"
+                }
+              }
+            }
+          ],
+          "CacheBehaviors": [
+            {
+              "AllowedMethods": [
+                "GET",
+                "HEAD",
+                "OPTIONS",
+                "PUT",
+                "PATCH",
+                "POST",
+                "DELETE"
+              ],
+              "Compress": true,
+              "CachePolicyId": {
+                "Ref": "HostVaryFrontCachingPolicy"
+              },
+              "OriginRequestPolicyId": {
+                "Ref": "LoginUIHostVaryFrontOriginRequestPolicy"
+              },
+              "PathPattern": "login/*",
+              "TargetOriginId": "Login-API",
+              "ViewerProtocolPolicy": "redirect-to-https",
+              "LambdaFunctionAssociations": [
+                {
+                  "EventType": "origin-request",
+                  "IncludeBody": true,
+                  "LambdaFunctionARN": {
+                    "Ref": "LambdaFunctionVersion"
+                  }
+                }
+              ]
+            }
+          ],
+          "DefaultCacheBehavior": {
+            "AllowedMethods": [
+              "GET",
+              "HEAD",
+              "OPTIONS"
+            ],
+            "Compress": true,
+            "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+            "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+            "TargetOriginId": "S3",
+            "ViewerProtocolPolicy": "redirect-to-https"
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "IdentityAwareProxyDomain": {
+      "Description": "The domain generated for the Identity Aware Proxy.",
+      "Value": {
+        "Fn::GetAtt": [
+          "CloudFrontDistribution",
+          "DomainName"
+        ]
+      },
+      "Export": {
+        "Name": "IdentityAwareProxyDomain"
+      }
+    }
+  }
+}

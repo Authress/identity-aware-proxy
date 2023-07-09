@@ -9,13 +9,40 @@ on:
     - main
     - 'release/**'
 
+permissions:
+  contents: write
+  pull-requests: read
+  id-token: write
+
 jobs:
   build:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v3
+    - name: Set up Node.js
+      uses: actions/setup-node@v3
+      with:
+        node-version: 18
+        registry-url: 'https://registry.npmjs.org'
 
-    - name: Build
+    - name: Install packages
+      run: yarn --frozen-lockfile
+
+    - name: Configure AWS Credentials
+      if: github.repository_owner == 'Authress' && github.ref == 'refs/heads/main'
+      uses: aws-actions/configure-aws-credentials@d713a182c5467df241c7509cf48b1c382c46080d
+      with:
+        aws-region: eu-west-1
+        role-duration-seconds: 3600
+        # AWS_ACCOUNT_ID is the Authress GitHub linked account
+        role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubRunnerAssumedRole
+        role-session-name: GitHubRunner-${{ github.repository_owner }}-IAP-${{ github.run_number }}
+    - name: Deploy
+      if: github.repository_owner == 'Authress' && github.ref == 'refs/heads/main'
+      run: yarn deploy
+    - name: Create Github Release and Tag
+      if: github.repository_owner == 'Authress' && github.ref != 'refs/heads/main'
       run: |
-        export VERSION=`echo $GITHUB_REF | sed -e "s/refs\/heads\///g" -e "s/release\///g"`
+        git tag ${GITHUB_REF/refs\/heads\/release\//}.$GITHUB_RUN_NUMBER
+        git push origin ${GITHUB_REF/refs\/heads\/release\//}.$GITHUB_RUN_NUMBER
