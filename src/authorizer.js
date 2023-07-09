@@ -7,19 +7,74 @@ const jwtManager = require('./jwtManager');
 const { jwtVerify, importJWK } = require('jose');
 
 const logger = require('./logger');
+const { DateTime } = require('luxon');
 
 class Authorizer {
   constructor() {
     this.publicKeysPromises = {};
   }
 
+  async handleLoginRedirect(request) {
+    const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-issuer']?.[0]?.value?.trim();
+    const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-authress-application-id']?.[0]?.value?.trim();
+
+    const cookies = cookieManager.parse(request.headers?.cookie || '');
+
+    const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
+
+    const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
+    if (request.queryStringParameters.code) {
+      const codeVerifier = cookies['iap-codeVerifier'];
+      const authenticationRequestId = cookies['iap-authenticationRequestId'];
+      try {
+        const tokenResult = await loginClient.post(`/authentication/${authenticationRequestId}/tokens`, {
+          grant_type: 'authorization_code',
+          redirect_uri: `https://${request.headers.host}/login/redirect`,
+          client_id: applicationIdentifier,
+          code: request.queryStringParameters.code,
+          code_verifier: codeVerifier
+        });
+        return {
+          statusCode: 301,
+          headers: {
+            'Location': cookies['iap-redirectUrl'] || `https://${request.headers.host}`,
+            'Set-Cookie': [cookieManager.serialize('authorization', tokenResult.data.access_token, {
+              expires: DateTime.utc().plus({ hours: 1 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'strict', secure: true, httpOnly: true
+            })]
+          },
+          body: {}
+        };
+      } catch (error) {
+        logger.log({ title: 'Failed to exchange code for access token', level: 'ERROR', error, request });
+        return this.authorizeRequest(request);
+      }
+    }
+
+    // if the user is logged in and the redirect is set, just navigate there
+    if (cookies['iap-redirectUrl'] && cookies.authorization) {
+      return {
+        statusCode: 301,
+        headers: {
+          location: cookies['iap-redirectUrl']
+        },
+        body: {}
+      };
+    }
+
+    logger.log({ title: 'Code not set on login redirect handling, forcing login', level: 'INFO', request });
+    return this.authorizeRequest(request);
+  }
+
   async authorizeRequest(request) {
     const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-issuer']?.[0]?.value?.trim();
     const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-authress-application-id']?.[0]?.value?.trim();
 
+    const cookies = cookieManager.parse(request.headers?.cookie || '');
+
     const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
 
-    const authorizationToken = cookieManager.parse(request.headers?.cookie || '').authorization;
+    const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
+    const authorizationToken = cookies.authorization;
 
     try {
       const identityResult = await this.getPolicy(expectedIssuer, authorizationToken);
@@ -28,36 +83,42 @@ class Authorizer {
       // If they are logged in, then let them have the data, `null` is a passthrough
       return null;
     } catch (error) {
-      logger.log({ title: 'User not authorized falling back to re-authentication', level: 'INFO', error });
+      logger.log({ title: 'User not authorized falling back to re-authentication', level: 'INFO', error, request });
     }
 
     // In case the user isn't logged in, redirect them to the authentication endpoint
     // User is unauthorized
-
-    const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
     
     const codeVerifier = base64url.encode(crypto.randomBytes(64));
     const codeChallenge = base64url.encode(crypto.createHash('sha256').update(codeVerifier).digest());
-    const redirectUrl = `https://${request.headers.host}${request.path || '/'}`;
-
+    
     try {
       const loginResult = await loginClient.post('/authentication', {
-        redirectUrl,
+        redirectUrl: `https://${request.headers.host}/login/redirect`,
         codeChallengeMethod: 'S256',
         codeChallenge,
         applicationId: applicationIdentifier,
         responseLocation: 'cookie'
       });
 
+      const cookieOptions = {
+        expires: DateTime.utc().plus({ minutes: 5 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'strict', secure: true, httpOnly: true
+      };
+      
       return {
         statusCode: 301,
         headers: {
-          location: loginResult.data.authenticationUrl
+          'Location': loginResult.data.authenticationUrl,
+          'Set-Cookie': [
+            cookieManager.serialize('iap-codeVerifier', codeVerifier, cookieOptions),
+            cookieManager.serialize('iap-authenticationRequestId', loginResult.data.authenticationRequestId, cookieOptions),
+            cookieManager.serialize('iap-redirectUrl', `https://${request.headers.host}${request.path || '/'}`, cookieOptions)
+          ]
         },
         body: {}
       };
     } catch (error) {
-      logger.log({ title: 'Failed to get login url', level: 'ERROR', error });
+      logger.log({ title: 'Failed to get login url', level: 'ERROR', error, request });
 
       return {
         statusCode: 500,

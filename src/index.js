@@ -62,6 +62,7 @@ try {
 
   api.head('/{proxy+}', request => authorizer.authorizeRequest(request));
   api.get('/{proxy+}', request => authorizer.authorizeRequest(request));
+  api.get('/login/redirect', request => authorizer.handleLoginRedirect(request));
   api.options('/{proxy+}', () => {
     return null;
   });
