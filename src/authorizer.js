@@ -14,8 +14,8 @@ class Authorizer {
   }
 
   async authorizeRequest(request) {
-    const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['X-ISSUER']?.trim();
-    const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['X-AUTHRESS-APPLICATION-ID']?.trim();
+    const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-issuer']?.[0]?.value?.trim();
+    const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-authress-application-id']?.[0]?.value?.trim();
 
     const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
 
