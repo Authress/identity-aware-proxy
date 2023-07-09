@@ -54,7 +54,7 @@ commander
 });
 
 commander
-.command('deploy')
+.command('publish-lambda-code-package')
 .description('Deploy to AWS.')
 .action(async () => {
   try {

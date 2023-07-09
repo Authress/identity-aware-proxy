@@ -40,7 +40,7 @@ jobs:
         role-session-name: GitHubRunner-${{ github.repository_owner }}-IAP-${{ github.run_number }}
     - name: Deploy
       if: github.repository_owner == 'Authress' && github.ref == 'refs/heads/main'
-      run: yarn deploy
+      run: yarn publish-lambda-code-package
     - name: Create Github Release and Tag
       if: github.repository_owner == 'Authress' && github.ref != 'refs/heads/main'
       run: |
