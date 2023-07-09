@@ -15,20 +15,22 @@
     </a>
 </p>
 
-This repository contains two proxies that enable adding Authentication and security to existing applications and platforms without changing any code in those services.
+This repository provides a proxy which enables adding Authentication and security to existing applications and platforms without changing any code in those services.
+
+There are specifically two different configurations that enable:
 
 * Service Identity Aware Proxy (IAP)
 * Private Website
 
 ## Identity Aware Proxy
 
-* [Stack Template](./templates/identityAwareProxyStackTemplate.json)
+* [IAP Proxy Stack Template](./templates/identityAwareProxyStackTemplate.json)
 
 The IAP enables adding globally redundant and fault tolerant authentication to an existing service being run. After deploying the stack, your service will automatically receive user identity tokens that can be verified. These tokens are automatically verified by the proxy to ensure all requests to the services themselves are secured.
 
 ## Private Website
 
-* [Stack Template](./templates/privateWebsiteStackTemplate.json)
+* [S3 Private Website Stack Template](./templates/privateWebsiteStackTemplate.json)
 
 The private website configuration is a AWS Stack which creates a CloudFront. The CloudFront is configured with a Lambda@Edge function which requires the user to login before accessing any assets in your S3 bucket or website.
 
