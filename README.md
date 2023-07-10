@@ -43,3 +43,10 @@ Parameters:
 The private website configuration is a AWS Stack which creates a CloudFront. The CloudFront is configured with a Lambda@Edge function which requires the user to login before accessing any assets in your S3 bucket or website.
 
 When your users end up at your website, if they are not already logged in, they will be automatically redirected to your [Authress hosted login page](https://authress.io/knowledge-base/docs/authentication/user-authentication) asking them to login to gain access. Additionally, the assets in your bucket will be checked against Authress to ensure that the user has access to the exact resource they are attempting to view. This is done using [Authress authorization](https://authress.io/knowledge-base/docs/category/authorization).
+
+### Enabled behavior
+
+The follow path patterns have been created to enable your website:
+* `/login/*` - reversed for this proxy, requests to this path will not be resolved correctly
+* `/public/*` - no authentication will happen on these paths
+* fallback - everything else will be checked for a valid authentication and authorization

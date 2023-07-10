@@ -140,19 +140,14 @@
           "Name": { "Fn::Sub": "${identityAwareProxyCustomName}-HostVaryFrontCachingPolicy" },
           "ParametersInCacheKeyAndForwardedToOrigin": {
             "CookiesConfig": {
-              "CookieBehavior": "none"
+              "CookieBehavior": "whitelist",
+              "Cookies": ["authorization", "iap-redirectUrl", "iap-codeVerifier", "iap-authenticationRequestId"]
             },
             "EnableAcceptEncodingBrotli": true,
             "EnableAcceptEncodingGzip": true,
             "HeadersConfig": {
               "HeaderBehavior": "whitelist",
-              "Headers": [
-                "Host",
-                "Origin",
-                "Sec-Fetch-Dest",
-                "Sec-Fetch-Mode",
-                "Sec-Fetch-Site"
-              ]
+              "Headers": ["Host", "Origin", "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site"]
             },
             "QueryStringsConfig": {
               "QueryStringBehavior": "none"
@@ -222,23 +217,11 @@
           ],
           "CacheBehaviors": [
             {
-              "AllowedMethods": [
-                "GET",
-                "HEAD",
-                "OPTIONS",
-                "PUT",
-                "PATCH",
-                "POST",
-                "DELETE"
-              ],
-              "Compress": true,
-              "CachePolicyId": {
-                "Ref": "HostVaryFrontCachingPolicy"
-              },
-              "OriginRequestPolicyId": {
-                "Ref": "LoginUIHostVaryFrontOriginRequestPolicy"
-              },
               "PathPattern": "login/*",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+              "Compress": true,
+              "CachePolicyId": { "Ref": "HostVaryFrontCachingPolicy" },
+              "OriginRequestPolicyId": { "Ref": "LoginUIHostVaryFrontOriginRequestPolicy" },
               "TargetOriginId": "S3",
               "ViewerProtocolPolicy": "redirect-to-https",
               "LambdaFunctionAssociations": [
@@ -250,14 +233,19 @@
                   }
                 }
               ]
+            },
+            {
+              "PathPattern": "public/*",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+              "Compress": true,
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+              "TargetOriginId": "S3",
+              "ViewerProtocolPolicy": "redirect-to-https"
             }
           ],
           "DefaultCacheBehavior": {
-            "AllowedMethods": [
-              "GET",
-              "HEAD",
-              "OPTIONS"
-            ],
+            "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
             "Compress": true,
             "CachePolicyId": "2e54312d-136d-493c-8eb9-b001f22f67d2",
             "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",

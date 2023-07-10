@@ -26,9 +26,8 @@ class Authorizer {
     const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
     if (request.queryStringParameters.code) {
       const codeVerifier = cookies['iap-codeVerifier'];
-      const authenticationRequestId = cookies['iap-authenticationRequestId'];
       try {
-        const tokenResult = await loginClient.post(`/authentication/${authenticationRequestId}/tokens`, {
+        const tokenResult = await loginClient.post(`/authentication/${request.queryStringParameters.nonce}/tokens`, {
           grant_type: 'authorization_code',
           redirect_uri: `https://${request.headers.host}/login/redirect`,
           client_id: applicationIdentifier,
@@ -51,8 +50,13 @@ class Authorizer {
       }
     }
 
+    // if the user is not logged in, send them to be authenticated:
+    if (!cookies.authorization) {
+      logger.log({ title: 'Code not set on login redirect handling, forcing login', level: 'INFO', request });
+      return this.authorizeRequest(request);
+    }
     // if the user is logged in and the redirect is set, just navigate there
-    if (cookies['iap-redirectUrl'] && cookies.authorization) {
+    if (cookies['iap-redirectUrl'] && !cookies['iap-redirectUrl'].match('/login/redirect')) {
       return {
         statusCode: 301,
         headers: {
@@ -62,8 +66,7 @@ class Authorizer {
       };
     }
 
-    logger.log({ title: 'Code not set on login redirect handling, forcing login', level: 'INFO', request });
-    return this.authorizeRequest(request);
+    return null;
   }
 
   async authorizeRequest(request) {
@@ -130,8 +133,9 @@ class Authorizer {
         responseLocation: 'cookie'
       });
 
+      // SameSite needs to be none, or else the redirect from the login won't send the cookie the first request thus causing a problem
       const cookieOptions = {
-        expires: DateTime.utc().plus({ minutes: 5 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'strict', secure: true, httpOnly: true
+        expires: DateTime.utc().plus({ minutes: 5 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'none', secure: true, httpOnly: true
       };
       
       return {
@@ -140,7 +144,6 @@ class Authorizer {
           'Location': loginResult.data.authenticationUrl,
           'Set-Cookie': [
             cookieManager.serialize('iap-codeVerifier', codeVerifier, cookieOptions),
-            cookieManager.serialize('iap-authenticationRequestId', loginResult.data.authenticationRequestId, cookieOptions),
             cookieManager.serialize('iap-redirectUrl', `https://${request.headers.host}${request.path || '/'}`, cookieOptions)
           ]
         },
