@@ -107,7 +107,7 @@ class Authorizer {
       try {
         await authressClient.userPermissions.authorizeUser(identityResult.principalId, resourceUri, 'READ');
       } catch (error) {
-        logger.log({ title: 'User does not have access to read', level: 'INFO', identityResult, resourceUri, permission: 'READ' });
+        logger.log({ title: 'User does not have access to read', level: 'INFO', error, identityResult, resourceUri, permission: 'READ' });
         return {
           statusCode: 403,
           body: {
