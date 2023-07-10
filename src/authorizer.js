@@ -71,6 +71,16 @@ class Authorizer {
     const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-authress-application-id']?.[0]?.value?.trim();
     const serviceName = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-service-name']?.[0]?.value?.trim() || 'Identity-Aware-Proxy-Service';
 
+    if (rawExpectedIssuer === 'acc-0001.login.authress.io') {
+      return {
+        statusCode: 400,
+        body: {
+          title: 'The configuration for the Authress Identity Proxy is not configured correctly. Please enter the accessTokenIssuer which should match your Authress Custom Domain for at: https://authress.io/app/#/settings?focus=domain',
+          errorCode: 'InvalidConfiguration'
+        }
+      };
+    }
+
     const cookies = cookieManager.parse(request.headers?.cookie || '');
 
     const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
@@ -84,7 +94,18 @@ class Authorizer {
 
       const authressClient = new AuthressClient({ baseUrl: expectedIssuer }, authorizationToken);
       const sanitizedPath = request.path.replace(/[^a-zA-Z0-9-_]/, '-');
-      await authressClient.userPermissions.authorizeUser(identityResult.principalId, `${serviceName}:${sanitizedPath}`, 'READ');
+      const resourceUri = `${serviceName}:${sanitizedPath}`;
+      try {
+        await authressClient.userPermissions.authorizeUser(identityResult.principalId, resourceUri, 'READ');
+      } catch (error) {
+        return {
+          statusCode: 403,
+          body: {
+            errorCode: 'AccessDenied',
+            title: `You do not have access to fetch this resource about this user. Entity ${identityResult.principalId} is missing permission 'READ' on '${resourceUri}'. Permission can be added by assigning the Role 'ReadResource' to the user in an access record: https://authress.io/app/#/settings?focus=records`
+          }
+        };
+      }
 
       logger.log({ title: 'User Valid Identity', level: 'INFO', identityResult });
 

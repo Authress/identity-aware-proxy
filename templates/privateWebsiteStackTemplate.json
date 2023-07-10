@@ -20,7 +20,7 @@
     "accessTokenIssuer": {
       "Type": "String",
       "Description": "The authentication token issuer url used to verify incoming tokens. Get one by creating an account at https://authress.io",
-      "Default": "login.authress.io"
+      "Default": "acc-0001.login.authress.io"
     },
     "applicationIdentifier": {
       "Type": "String",
@@ -209,8 +209,9 @@
               },
               "Id": "S3",
               "OriginCustomHeaders": [
-                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" }},
-                { "HeaderName": "X-AUTHRESS-APPLICATION-ID", "HeaderValue": { "Ref": "applicationIdentifier" }}
+                { "HeaderName": "X-SERVICE-NAME", "HeaderValue": { "Ref": "identityAwareProxyCustomName" } },
+                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" } },
+                { "HeaderName": "X-AUTHRESS-APPLICATION-ID", "HeaderValue": { "Ref": "applicationIdentifier" } }
               ],
               "S3OriginConfig": {
                 "OriginAccessIdentity": {

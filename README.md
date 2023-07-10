@@ -24,7 +24,7 @@ There are specifically two different configurations that enable:
 
 ## Identity Aware Proxy
 
-* [IAP Proxy Stack Template](./templates/identityAwareProxyStackTemplate.json)
+* [IAP Proxy Stack Template](./templates/privateWebsiteStackTemplate.json)
 
 (Note: Stacks must be deployed in the AWS US-EAST-1 Region)
 
