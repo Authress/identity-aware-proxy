@@ -37,8 +37,13 @@ The IAP enables adding globally redundant and fault tolerant authentication to a
 (Note: Stacks must be deployed in the AWS US-EAST-1 Region)
 
 Parameters:
-
-* `accessTokenIssuer` - Set this to be your [Authress configured custom domain](https://authress.io/app/#/settings?focus=domain)
+* `accessTokenIssuer` - Set this to be your [Authress configured custom domain](https://authress.io/app/#/settings?focus=domain).
+* `applicationIdentifier` - The application identifier used to securely log users in via the hosted login page. Use the default application or create a new [Authress application](https://authress.io/app/#/settings?focus=applications).
+* `bucketWebsiteS3Name` - Your S3 Bucket that contains your private static website. This is necessary to configure the CloudFront to proxy your S3 bucket.
+* `identityAwareProxyCustomName` - Provide a custom name of the proxy microservice, is used in the naming of various created resources.
+* `identityAwareProxyVersion` - The version of the proxy to deploy. [Available Releases](https://github.com/Authress/identity-aware-proxy/tags)
+* `proxyCustomDomain` - [Optional] Specify a domain to host the proxy on. This is where your users will connect to, and will forward the requests to your bucket.
+* `proxyRoute53HostedZoneId` - [Optional] Specify the Route53 hosted zone that will be used to connect your custom domain to the CloudFront. This will also be used to request a Certificate for that domain.
 
 The private website configuration is a AWS Stack which creates a CloudFront. The CloudFront is configured with a Lambda@Edge function which requires the user to login before accessing any assets in your S3 bucket or website.
 
@@ -47,7 +52,7 @@ When your users end up at your website, if they are not already logged in, they 
 ### Enabled behavior
 
 The follow path patterns have been created to enable your website:
-* `/login/*` - reversed for this proxy, requests to this path will not be resolved correctly
-* `/index.html` - The root of your website is always public
-* `/public/*` - no authentication will happen on these paths
-* fallback - everything else will be checked for a valid authentication and authorization
+* `/index.html` - The root of your website is always public.
+* `/public/*` - No authentication will happen on these paths.
+* `/login/*` - These are reversed routes for this proxy, requests to this path will be redirected back to the main page.
+* - (everything else) - everything else will be checked for valid authentication and authorization of the current user.
