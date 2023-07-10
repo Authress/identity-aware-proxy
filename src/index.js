@@ -21,7 +21,7 @@ try {
       return request;
     },
     responseMiddleware(request, response) {
-      const loggedResponse = response.statusCode >= 400 ? response : { statusCode: response.statusCode };
+      const loggedResponse = response.statusCode >= 400 ? response : { statusCode: response.statusCode, headers: response.headers };
       response.headers = Object.assign({
         'strict-transport-security': 'max-age=31556926; includeSubDomains;',
         'vary': 'Origin, Host, Sec-Fetch-Dest, Sec-Fetch-Mode, Sec-Fetch-Site',

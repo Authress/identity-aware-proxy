@@ -23,6 +23,11 @@ class Authorizer {
 
     const expectedIssuer = (rawExpectedIssuer.startsWith('http') ? rawExpectedIssuer : `https://${rawExpectedIssuer}`).replace(/[/]$/, '');
 
+    // Prevent two kinds of problems:
+    // * Infinite loops with the redirect pointing at itself
+    // * Open redirects, the redirect must start with a / to ensure it is this site, we will not redirect to another site.
+    const validRedirectLocation = cookies['iap-redirectUrl'] && !cookies['iap-redirectUrl'].match('/login/redirect') && cookies['iap-redirectUrl'].startsWith('/');
+
     const loginClient = axios.create({ baseURL: `${expectedIssuer}/api` });
     if (request.queryStringParameters.code) {
       const codeVerifier = cookies['iap-codeVerifier'];
@@ -34,10 +39,11 @@ class Authorizer {
           code: request.queryStringParameters.code,
           code_verifier: codeVerifier
         });
+        logger.log({ title: 'User completed login exchanging the auth code for an access token identity', level: 'INFO', tokenResult });
         return {
           statusCode: 301,
           headers: {
-            'Location': cookies['iap-redirectUrl'] || `https://${request.headers.host}`,
+            'Location': validRedirectLocation || `https://${request.headers.host}`,
             'Set-Cookie': [cookieManager.serialize('authorization', tokenResult.data.access_token, {
               expires: DateTime.utc().plus({ hours: 1 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'strict', secure: true, httpOnly: true
             })]
@@ -56,11 +62,11 @@ class Authorizer {
       return this.authorizeRequest(request);
     }
     // if the user is logged in and the redirect is set, just navigate there
-    if (cookies['iap-redirectUrl'] && !cookies['iap-redirectUrl'].match('/login/redirect')) {
+    if (validRedirectLocation) {
       return {
         statusCode: 301,
         headers: {
-          location: cookies['iap-redirectUrl']
+          location: validRedirectLocation
         },
         body: {}
       };
@@ -96,7 +102,7 @@ class Authorizer {
       const identityResult = await this.getPolicy(expectedIssuer, authorizationToken);
 
       const authressClient = new AuthressClient({ baseUrl: expectedIssuer }, authorizationToken);
-      const sanitizedPath = request.path.replace(/[^a-zA-Z0-9-_]/, '-');
+      const sanitizedPath = request.path.replace(/[^a-zA-Z0-9-_/:]/, '-');
       const resourceUri = `${serviceName}:${sanitizedPath}`;
       try {
         await authressClient.userPermissions.authorizeUser(identityResult.principalId, resourceUri, 'READ');
