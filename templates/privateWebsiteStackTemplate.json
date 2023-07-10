@@ -141,13 +141,40 @@
           "ParametersInCacheKeyAndForwardedToOrigin": {
             "CookiesConfig": {
               "CookieBehavior": "whitelist",
-              "Cookies": ["authorization", "iap-redirectUrl", "iap-codeVerifier", "iap-authenticationRequestId"]
+              "Cookies": ["authorization", "iap-redirectUrl", "iap-codeVerifier"]
             },
             "EnableAcceptEncodingBrotli": true,
             "EnableAcceptEncodingGzip": true,
             "HeadersConfig": {
               "HeaderBehavior": "whitelist",
               "Headers": ["Host", "Origin", "Sec-Fetch-Dest", "Sec-Fetch-Mode", "Sec-Fetch-Site"]
+            },
+            "QueryStringsConfig": {
+              "QueryStringBehavior": "none"
+            }
+          }
+        }
+      }
+    },
+    "ProtectedRouteCachingPolicy": {
+      "Type": "AWS::CloudFront::CachePolicy",
+      "Properties": {
+        "CachePolicyConfig": {
+          "Comment": "Authentication Login Vary response on Host",
+          "DefaultTTL": 86400,
+          "MaxTTL": 864000,
+          "MinTTL": 1,
+          "Name": { "Fn::Sub": "${identityAwareProxyCustomName}-ProtectedRouteCachingPolicy" },
+          "ParametersInCacheKeyAndForwardedToOrigin": {
+            "CookiesConfig": {
+              "CookieBehavior": "whitelist",
+              "Cookies": ["authorization"]
+            },
+            "EnableAcceptEncodingBrotli": true,
+            "EnableAcceptEncodingGzip": true,
+            "HeadersConfig": {
+              "HeaderBehavior": "whitelist",
+              "Headers": ["Host"]
             },
             "QueryStringsConfig": {
               "QueryStringBehavior": "none"
@@ -217,8 +244,44 @@
           ],
           "CacheBehaviors": [
             {
+              "PathPattern": "/favicon.ico",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "Compress": true,
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+              "TargetOriginId": "S3",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            {
+              "PathPattern": "/",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "Compress": true,
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+              "TargetOriginId": "S3",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            {
+              "PathPattern": "/index.html",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "Compress": true,
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+              "TargetOriginId": "S3",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            {
+              "PathPattern": "public/*",
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
+              "Compress": true,
+              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
+              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
+              "TargetOriginId": "S3",
+              "ViewerProtocolPolicy": "redirect-to-https"
+            },
+            {
               "PathPattern": "login/*",
-              "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
+              "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
               "Compress": true,
               "CachePolicyId": { "Ref": "HostVaryFrontCachingPolicy" },
               "OriginRequestPolicyId": { "Ref": "LoginUIHostVaryFrontOriginRequestPolicy" },
@@ -234,20 +297,11 @@
                 }
               ]
             },
-            {
-              "PathPattern": "public/*",
-              "AllowedMethods": ["GET", "HEAD", "OPTIONS", "PUT", "PATCH", "POST", "DELETE"],
-              "Compress": true,
-              "CachePolicyId": "658327ea-f89d-4fab-a63d-7e88639e58f6",
-              "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
-              "TargetOriginId": "S3",
-              "ViewerProtocolPolicy": "redirect-to-https"
-            }
           ],
           "DefaultCacheBehavior": {
             "AllowedMethods": ["GET", "HEAD", "OPTIONS"],
             "Compress": true,
-            "CachePolicyId": "2e54312d-136d-493c-8eb9-b001f22f67d2",
+            "CachePolicyId": { "Ref": "ProtectedRouteCachingPolicy" },
             "OriginRequestPolicyId": "88a5eaf4-2fd4-4709-b370-b4c650ea3fcf",
             "TargetOriginId": "S3",
             "ViewerProtocolPolicy": "redirect-to-https",

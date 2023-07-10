@@ -41,7 +41,7 @@ class Authorizer {
         });
         logger.log({ title: 'User completed login exchanging the auth code for an access token identity', level: 'INFO', validRedirectLocation });
         return {
-          statusCode: 301,
+          statusCode: 302,
           headers: {
             'Location': validRedirectLocation || `https://${request.headers.host}`,
             'Set-Cookie': [cookieManager.serialize('authorization', tokenResult.data.access_token, {
@@ -64,7 +64,7 @@ class Authorizer {
     // if the user is logged in and the redirect is set, just navigate there
     if (validRedirectLocation) {
       return {
-        statusCode: 301,
+        statusCode: 302,
         headers: {
           location: validRedirectLocation
         },
@@ -72,7 +72,14 @@ class Authorizer {
       };
     }
 
-    return null;
+    // We have no idea why they went to this route again, return them to the top
+    return {
+      statusCode: 302,
+      headers: {
+        location: '/'
+      },
+      body: {}
+    };
   }
 
   async authorizeRequest(request) {
@@ -85,6 +92,16 @@ class Authorizer {
         statusCode: 400,
         body: {
           title: 'The configuration for the Authress Identity Proxy is not configured correctly. Please enter the accessTokenIssuer which should match your Authress Custom Domain for at: https://authress.io/app/#/settings?focus=domain',
+          errorCode: 'InvalidConfiguration'
+        }
+      };
+    }
+
+    if (request.headers?.host?.match('s3.amazonaws.com')) {
+      return {
+        statusCode: 400,
+        body: {
+          title: 'The configuration for the CloudFront Distribution is not correctly passing the Host header to the endpoints likely due to an invalid CachePolicy configuration. Review the caching policies attached to the CloudFront Behavior to ensure the correct one is selected.',
           errorCode: 'InvalidConfiguration'
         }
       };
@@ -159,7 +176,7 @@ class Authorizer {
       };
       
       return {
-        statusCode: 301,
+        statusCode: 302,
         headers: {
           'Location': loginResult.data.authenticationUrl,
           'Set-Cookie': [
@@ -170,7 +187,7 @@ class Authorizer {
         body: {}
       };
     } catch (error) {
-      logger.log({ title: 'Failed to starting authentication request and generate login url', level: 'ERROR', error, request });
+      logger.log({ title: 'Failed to start authentication request and generate login url', level: 'ERROR', error, request });
 
       return {
         statusCode: 500,
