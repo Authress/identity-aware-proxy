@@ -39,13 +39,13 @@ class Authorizer {
           code: request.queryStringParameters.code,
           code_verifier: codeVerifier
         });
-        logger.log({ title: 'User completed login exchanging the auth code for an access token identity', level: 'INFO', tokenResult });
+        logger.log({ title: 'User completed login exchanging the auth code for an access token identity', level: 'INFO', validRedirectLocation });
         return {
           statusCode: 301,
           headers: {
             'Location': validRedirectLocation || `https://${request.headers.host}`,
             'Set-Cookie': [cookieManager.serialize('authorization', tokenResult.data.access_token, {
-              expires: DateTime.utc().plus({ hours: 1 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'strict', secure: true, httpOnly: true
+              expires: DateTime.utc().plus({ hours: 1 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'Lax', secure: true, httpOnly: true
             })]
           },
           body: {}
@@ -107,6 +107,7 @@ class Authorizer {
       try {
         await authressClient.userPermissions.authorizeUser(identityResult.principalId, resourceUri, 'READ');
       } catch (error) {
+        logger.log({ title: 'User does not have access to read', level: 'INFO', identityResult, resourceUri, permission: 'READ' });
         return {
           statusCode: 403,
           body: {
@@ -139,9 +140,9 @@ class Authorizer {
         responseLocation: 'cookie'
       });
 
-      // SameSite needs to be none, or else the redirect from the login won't send the cookie the first request thus causing a problem
+      // SameSite needs to be LAX, or else the redirect from the login won't send the cookie the first request thus causing a problem
       const cookieOptions = {
-        expires: DateTime.utc().plus({ minutes: 5 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'none', secure: true, httpOnly: true
+        expires: DateTime.utc().plus({ minutes: 5 }).toJSDate(), domain: request.headers.host, path: '/', sameSite: 'Lax', secure: true, httpOnly: true
       };
       
       return {
