@@ -2,6 +2,7 @@ const axios = require('axios');
 const cookieManager = require('cookie');
 const crypto = require('crypto');
 const base64url = require('base64url');
+const { AuthressClient } = require('authress-sdk');
 
 const jwtManager = require('./jwtManager');
 const { jwtVerify, importJWK } = require('jose');
@@ -68,6 +69,7 @@ class Authorizer {
   async authorizeRequest(request) {
     const rawExpectedIssuer = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-issuer']?.[0]?.value?.trim();
     const applicationIdentifier = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-authress-application-id']?.[0]?.value?.trim();
+    const serviceName = request.requestContext.cloudFrontOriginConfig?.customHeaders?.['x-service-name']?.[0]?.value?.trim() || 'Identity-Aware-Proxy-Service';
 
     const cookies = cookieManager.parse(request.headers?.cookie || '');
 
@@ -77,7 +79,13 @@ class Authorizer {
     const authorizationToken = cookies.authorization;
 
     try {
+      // Validate the user logged in
       const identityResult = await this.getPolicy(expectedIssuer, authorizationToken);
+
+      const authressClient = new AuthressClient({ baseUrl: expectedIssuer }, authorizationToken);
+      const sanitizedPath = request.path.replace(/[^a-zA-Z0-9-_]/, '-');
+      await authressClient.userPermissions.authorizeUser(identityResult.principalId, `${serviceName}:${sanitizedPath}`, 'READ');
+
       logger.log({ title: 'User Valid Identity', level: 'INFO', identityResult });
 
       // If they are logged in, then let them have the data, `null` is a passthrough
@@ -118,7 +126,7 @@ class Authorizer {
         body: {}
       };
     } catch (error) {
-      logger.log({ title: 'Failed to get login url', level: 'ERROR', error, request });
+      logger.log({ title: 'Failed to starting authentication request and generate login url', level: 'ERROR', error, request });
 
       return {
         statusCode: 500,

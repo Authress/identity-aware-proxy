@@ -209,8 +209,9 @@
               },
               "Id": "S3",
               "OriginCustomHeaders": [
-                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" }},
-                { "HeaderName": "X-AUTHRESS-APPLICATION-ID", "HeaderValue": { "Ref": "applicationIdentifier" }}
+                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "identityAwareProxyCustomName" } },
+                { "HeaderName": "X-ISSUER", "HeaderValue": { "Ref": "accessTokenIssuer" } },
+                { "HeaderName": "X-AUTHRESS-APPLICATION-ID", "HeaderValue": { "Ref": "applicationIdentifier" } }
               ],
               "S3OriginConfig": {
                 "OriginAccessIdentity": {
