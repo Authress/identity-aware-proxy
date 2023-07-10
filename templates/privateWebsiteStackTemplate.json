@@ -174,7 +174,7 @@
             "EnableAcceptEncodingGzip": true,
             "HeadersConfig": {
               "HeaderBehavior": "whitelist",
-              "Headers": ["Host"]
+              "Headers": ["Host", "Origin"]
             },
             "QueryStringsConfig": {
               "QueryStringBehavior": "none"

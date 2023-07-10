@@ -60,6 +60,8 @@ class ApiTrigger {
       const response = await apiHandler(constructedRequest, context);
 
       if (!response || !request.body || response.statusCode === 204) {
+        // We need to rewrite the host header though, because it needs to be forwarded to the s3 bucket correctly
+        request.headers.host = [{ value: constructedRequest.requestContext.cloudFrontOriginConfig.domainName }];
         return request;
       }
 
