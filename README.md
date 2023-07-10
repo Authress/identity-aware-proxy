@@ -48,5 +48,6 @@ When your users end up at your website, if they are not already logged in, they 
 
 The follow path patterns have been created to enable your website:
 * `/login/*` - reversed for this proxy, requests to this path will not be resolved correctly
+* `/index.html` - The root of your website is always public
 * `/public/*` - no authentication will happen on these paths
 * fallback - everything else will be checked for a valid authentication and authorization

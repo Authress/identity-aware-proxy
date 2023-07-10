@@ -63,9 +63,11 @@ try {
   api.head('/{proxy+}', request => authorizer.authorizeRequest(request));
   api.get('/{proxy+}', request => authorizer.authorizeRequest(request));
   api.get('/login/redirect', request => authorizer.handleLoginRedirect(request));
-  api.options('/{proxy+}', () => {
-    return null;
-  });
+
+  // Allow without authentication
+  api.options('/{proxy+}', () => null);
+  api.get('/index.html', () => null);
+  api.get('/favicon.ico', () => null);
 } catch (error) {
   logger.log({ title: 'LoaderLogger - failed to load service', level: 'ERROR', error });
   throw error;
