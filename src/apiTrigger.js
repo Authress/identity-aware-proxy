@@ -59,7 +59,7 @@ class ApiTrigger {
       logger.trackPoint('apiTrigger.onEvent.beforeApiHandler');
       const response = await apiHandler(constructedRequest, context);
 
-      if (!response) {
+      if (!response || !request.body || response.statusCode === 204) {
         return request;
       }
 

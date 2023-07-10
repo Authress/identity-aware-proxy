@@ -101,18 +101,31 @@ class Authorizer {
       // Validate the user logged in
       const identityResult = await this.getPolicy(expectedIssuer, authorizationToken);
 
-      const authressClient = new AuthressClient({ baseUrl: expectedIssuer }, authorizationToken);
+      const authressClient = new AuthressClient({ baseUrl: expectedIssuer });
+      authressClient.setToken(authorizationToken);
+
       const sanitizedPath = request.path.replace(/[^a-zA-Z0-9-_/:]/, '-');
       const resourceUri = `${serviceName}:${sanitizedPath}`;
       try {
         await authressClient.userPermissions.authorizeUser(identityResult.principalId, resourceUri, 'READ');
       } catch (error) {
         logger.log({ title: 'User does not have access to read', level: 'INFO', error, identityResult, resourceUri, permission: 'READ' });
+        if (error.code === 'UnauthorizedError') {
+          return {
+            statusCode: 403,
+            body: {
+              errorCode: 'AccessDenied',
+              title: `You do not have access to fetch this resource about this user. Entity ${identityResult.principalId} is missing permission 'READ' on '${resourceUri}'. Permission can be added by assigning the Role 'ReadResource' to the user in an access record: https://authress.io/app/#/settings?focus=records`
+            }
+          };
+        }
+
+        logger.log({ title: 'Failed to perform authorization check', level: 'INFO', error, identityResult, resourceUri, permission: 'READ' });
         return {
-          statusCode: 403,
+          statusCode: 503,
           body: {
-            errorCode: 'AccessDenied',
-            title: `You do not have access to fetch this resource about this user. Entity ${identityResult.principalId} is missing permission 'READ' on '${resourceUri}'. Permission can be added by assigning the Role 'ReadResource' to the user in an access record: https://authress.io/app/#/settings?focus=records`
+            errorCode: 'UnexpectedError',
+            title: `Failed to perform an authorization check for the user ${error.message} - ${error.code}`
           }
         };
       }
