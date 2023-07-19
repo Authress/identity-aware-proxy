@@ -29,6 +29,15 @@ This repository contains two things:
 
 You can already directly deploy the stack template without don't any additional work. Clone the repository locally, and update the stack template to your AWS account in the `us-east-1` region. Then fill out the necessary parameters as specified below.
 
+Cloud Formation stack templates is the standard way to deploy resources to your AWS account. If you unfamiliar with them, all they do is specify a list of resources, and then create those resources in your account. If you review the list of resources in the stack template in the repository we can go over each one.
+
+Resources
+* Lambda Function - Runs the authentication and authorization code
+* CloudFront Distribution - The CDN that runs the Lambda Function and proxies your S3 bucket where your website is stored
+* S3 bucket policy - allows the CloudFront Distribution read the contents of your S3 bucket to return to authorized users
+* [Optional] Route53 Record - Allows you specify a custom domain for your private website so that your users can access it via a preferred website URL. For testing this is not necessary, you can access the private website using the CloudFront Distribution domain name
+* [Optional] AWS Certificate Manager Certificate - generates a certificate to enable the Route53 Record + Custom Domain to work
+
 ### What if I want to write my own version?
 
 No problem, you can easily change this code to make your own changes.
