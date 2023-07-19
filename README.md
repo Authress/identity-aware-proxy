@@ -22,15 +22,28 @@ There are specifically two different configurations that enable:
 * Service Identity Aware Proxy (IAP)
 * Private Website
 
-## Identity Aware Proxy
+## How does it work?
+This repository contains two things:
+* CloudFormation Stack Template
+* [Source code](/src) for authentication via a lambda function
 
-* [IAP Proxy Stack Template](./templates/privateWebsiteStackTemplate.json)
+You can already directly deploy the stack template without don't any additional work. Clone the repository locally, and update the stack template to your AWS account in the `us-east-1` region. Then fill out the necessary parameters as specified below.
 
-(Note: Stacks must be deployed in the AWS US-EAST-1 Region)
+### What if I want to write my own version?
 
-The IAP enables adding globally redundant and fault tolerant authentication to an existing service being run. After deploying the stack, your service will automatically receive user identity tokens that can be verified. These tokens are automatically verified by the proxy to ensure all requests to the services themselves are secured.
+No problem, you can easily change this code to make your own changes.
 
-## Private Website
+1. Clone the repo
+2. Update the [function code](./src) to make the necessary changes you need
+3. Package the lambda and push it S3
+4. Update the cloudformation template to point at your built lambda package.
+
+### Still not sure what to do next?
+You can reach out to us with any issues and questions by filing an [GitHub issue](https://github.com/Authress/identity-aware-proxy/issues). We are responsive to all issues!
+
+## Available Templates
+
+### Private Website
 
 * [S3 Private Website Stack Template](./templates/privateWebsiteStackTemplate.json)
 
@@ -56,3 +69,12 @@ The follow path patterns have been created to enable your website:
 * `/public/*` - No authentication will happen on these paths.
 * `/login/*` - These are reversed routes for this proxy, requests to this path will be redirected back to the main page.
 * - (everything else) - everything else will be checked for valid authentication and authorization of the current user.
+
+
+### Identity Aware Proxy
+
+* [IAP Proxy Stack Template](./templates/privateWebsiteStackTemplate.json)
+
+(Note: Stacks must be deployed in the AWS US-EAST-1 Region)
+
+The IAP enables adding globally redundant and fault tolerant authentication to an existing service being run. After deploying the stack, your service will automatically receive user identity tokens that can be verified. These tokens are automatically verified by the proxy to ensure all requests to the services themselves are secured.
