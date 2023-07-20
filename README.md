@@ -27,11 +27,11 @@ This repository contains two things:
 * CloudFormation Stack Template
 * [Source code](/src) for authentication via a lambda function
 
-You can already directly deploy the stack template without don't any additional work. Clone the repository locally, and update the stack template to your AWS account in the `us-east-1` region. Then fill out the necessary parameters as specified below.
+You can already directly deploy the stack template without any additional work. Clone the repository locally, and upload the stack template to your AWS account in the `us-east-1` region. Then fill out the necessary parameters as specified below.
 
-Cloud Formation stack templates is the standard way to deploy resources to your AWS account. If you unfamiliar with them, all they do is specify a list of resources, and then create those resources in your account. If you review the list of resources in the stack template in the repository we can go over each one.
+CloudFormation stack templates is the standard way to deploy resources to your AWS account. If you unfamiliar with them, all they do is specify a list of resources, and then it creates those resources in your account.
 
-Resources
+Resources created by the CloudFormation stack template:
 * Lambda Function - Runs the authentication and authorization code
 * CloudFront Distribution - The CDN that runs the Lambda Function and proxies your S3 bucket where your website is stored
 * S3 bucket policy - allows the CloudFront Distribution read the contents of your S3 bucket to return to authorized users
