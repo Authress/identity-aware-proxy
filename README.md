@@ -1,4 +1,4 @@
-# Authress Identity Aware Proxy + Private Website Authentication
+# Authress Zero Trust: Identity Aware Proxy + Private Website Authentication
 
 <p align="center">
     <a href="https://github.com/Authress/identity-aware-proxy/actions" alt="Authress build">
