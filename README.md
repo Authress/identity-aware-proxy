@@ -1,18 +1,10 @@
 # Authress Zero Trust: Identity Aware Proxy + Private Website Authentication
 
 <p align="center">
-    <a href="https://github.com/Authress/identity-aware-proxy/actions" alt="Authress build">
-      <img src="https://github.com/authress/identity-aware-proxy/actions/workflows/build.yml/badge.svg">
-    </a>
-    <a href="./LICENSE" alt="apache 2.0 license">
-      <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg">
-    </a>
-    <a href="https://authress.io" alt="AWS Serverless Application">
-        <img src="https://img.shields.io/badge/AWS%20Serverless%20Application-Identity%20Aware%20Proxy-623CE4">
-    </a>
-    <a href="https://authress.io/community" alt="Authress build">
-      <img src="https://img.shields.io/badge/community-Authress-fbaf0b.svg">
-    </a>
+    <a href="https://github.com/Authress/identity-aware-proxy/actions" alt="Authress build"><img src="https://github.com/authress/identity-aware-proxy/actions/workflows/build.yml/badge.svg"></a>
+    <a href="./LICENSE" alt="apache 2.0 license"><img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg"></a>
+    <a href="https://authress.io" alt="AWS Serverless Application"><img src="https://img.shields.io/badge/AWS%20Serverless%20Application-Identity%20Aware%20Proxy-623CE4"></a>
+    <a href="https://authress.io/community" alt="Authress build"><img src="https://img.shields.io/badge/community-Authress-fbaf0b.svg"></a>
 </p>
 
 This repository provides a proxy which enables adding Authentication and security to existing applications and platforms without changing any code in those services.
