@@ -1,3 +1,7 @@
+<p id="main" align="center">
+  <img src="https://authress.io/static/images/linkedin-banner.png" alt="Authress media banner">
+</p>
+
 # Authress Zero Trust: Identity Aware Proxy + Private Website Authentication
 
 <p align="center">
